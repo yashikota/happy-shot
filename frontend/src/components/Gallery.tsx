@@ -9,6 +9,8 @@ import { CameraComponent } from "../components/Camera";
 
 export const GalleryComponent = () => {
   const { id } = useParams<{ id: string }>();
+  console.log(id);
+
   const navigate = useNavigate();
 
   const defaultImages: Image[] = [
@@ -178,8 +180,6 @@ export const GalleryComponent = () => {
 
   return (
     <div>
-      <h1>Gallery {id}</h1>
-
       <button
         type="button"
         onClick={() => navigate("/")}
