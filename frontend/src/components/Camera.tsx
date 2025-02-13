@@ -1,10 +1,7 @@
-import {
-  Camera as CameraIcon,
-  FlipHorizontal,
-  Maximize,
-  Minimize,
-} from "lucide-react";
+import { Camera, Compass, Grid, Image, RefreshCw, Timer } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ulid } from "ulid";
 import "../styles/camera.css";
 
 interface WindowWithAudioContext extends Window {
@@ -13,16 +10,38 @@ interface WindowWithAudioContext extends Window {
 
 interface CameraProps {
   onPhotoCapture: (photoBlob: Blob) => void;
+  lastPhotoUrl?: string;
 }
 
-export const Camera = ({ onPhotoCapture }: CameraProps) => {
+interface VideoDevice {
+  deviceId: string;
+  label: string;
+}
+
+export const CameraComponent = ({
+  onPhotoCapture,
+  lastPhotoUrl,
+}: CameraProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const navigate = useNavigate();
   const [currentFacingMode, setCurrentFacingMode] = useState<
     "environment" | "user"
   >("environment");
   const [amountOfCameras, setAmountOfCameras] = useState(0);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showGrid, setShowGrid] = useState(false);
+  const [showLevel, setShowLevel] = useState(false);
+  const [timerDuration, setTimerDuration] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [timerCount, setTimerCount] = useState(0);
+  const [deviceOrientation, setDeviceOrientation] = useState({
+    beta: 0,
+    gamma: 0,
+  });
+  const [recordDuration, setRecordDuration] = useState(3);
+  const [videoDevices, setVideoDevices] = useState<VideoDevice[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
+  const isDev = import.meta.env.DEV;
 
   useEffect(() => {
     const AudioContextClass =
@@ -43,11 +62,18 @@ export const Camera = ({ onPhotoCapture }: CameraProps) => {
             track.stop();
           }
           navigator.mediaDevices.enumerateDevices().then((devices) => {
-            const videoDevices = devices.filter(
-              (device) => device.kind === "videoinput",
-            );
-            setAmountOfCameras(videoDevices.length);
-            initCameraStream();
+            const vDevices = devices
+              .filter((device) => device.kind === "videoinput")
+              .map((device) => ({
+                deviceId: device.deviceId,
+                label: device.label || `Camera ${device.deviceId.slice(0, 4)}`,
+              }));
+            setVideoDevices(vDevices);
+            setAmountOfCameras(vDevices.length);
+            if (vDevices.length > 0) {
+              setSelectedDeviceId(vDevices[0].deviceId);
+              initCameraStream(vDevices[0].deviceId);
+            }
           });
         })
         .catch((error) => {
@@ -61,53 +87,46 @@ export const Camera = ({ onPhotoCapture }: CameraProps) => {
         "Camera not supported by browser, or there is no camera detected/connected",
       );
     }
+
+    if (window.DeviceOrientationEvent) {
+      window.addEventListener("deviceorientation", handleOrientation);
+    }
+
     return () => {
       if (audioContextRef.current) {
         audioContextRef.current.close();
       }
+      window.removeEventListener("deviceorientation", handleOrientation);
     };
   }, []);
 
-  const playClickSound = () => {
-    if (!audioContextRef.current) return;
-    const duration = 0.1;
-    const oscillator = audioContextRef.current.createOscillator();
-    const gainNode = audioContextRef.current.createGain();
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContextRef.current.destination);
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(
-      2000,
-      audioContextRef.current.currentTime,
-    );
-    oscillator.frequency.exponentialRampToValueAtTime(
-      20,
-      audioContextRef.current.currentTime + duration,
-    );
-    gainNode.gain.setValueAtTime(0.3, audioContextRef.current.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(
-      0.01,
-      audioContextRef.current.currentTime + duration,
-    );
-    oscillator.start(audioContextRef.current.currentTime);
-    oscillator.stop(audioContextRef.current.currentTime + duration);
+  const handleOrientation = (event: DeviceOrientationEvent) => {
+    setDeviceOrientation({
+      beta: event.beta || 0,
+      gamma: event.gamma || 0,
+    });
   };
 
-  const initCameraStream = async () => {
+  const initCameraStream = async (deviceId?: string) => {
     if (videoRef.current?.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
       for (const track of stream.getTracks()) {
         track.stop();
       }
     }
+
     const constraints = {
       audio: false,
-      video: {
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-        facingMode: currentFacingMode,
-      },
+      video:
+        isDev && deviceId
+          ? { deviceId: { exact: deviceId } }
+          : {
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+              facingMode: currentFacingMode,
+            },
     };
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       if (videoRef.current) {
@@ -130,9 +149,28 @@ export const Camera = ({ onPhotoCapture }: CameraProps) => {
     canvas.toBlob((blob) => {
       if (blob) {
         onPhotoCapture(blob);
-        playClickSound();
       }
     }, "image/jpeg");
+  };
+
+  const startTimer = () => {
+    if (timerDuration > 0 && !isTimerRunning) {
+      setIsTimerRunning(true);
+      setTimerCount(timerDuration);
+      const interval = setInterval(() => {
+        setTimerCount((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            setIsTimerRunning(false);
+            takeSnapshot();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      takeSnapshot();
+    }
   };
 
   const toggleCamera = () => {
@@ -143,14 +181,9 @@ export const Camera = ({ onPhotoCapture }: CameraProps) => {
     });
   };
 
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
-    }
+  const handleDeviceChange = (deviceId: string) => {
+    setSelectedDeviceId(deviceId);
+    initCameraStream(deviceId);
   };
 
   return (
@@ -159,32 +192,102 @@ export const Camera = ({ onPhotoCapture }: CameraProps) => {
         <video id="video" ref={videoRef} autoPlay playsInline>
           <track kind="captions" src="" label="captions" default />
         </video>
-        <div id="video_overlay" />
+        {showGrid && (
+          <div className="grid-overlay">
+            <div
+              className="grid-line grid-line-vertical"
+              style={{ left: "33.33%" }}
+            />
+            <div
+              className="grid-line grid-line-vertical"
+              style={{ left: "66.66%" }}
+            />
+            <div
+              className="grid-line grid-line-horizontal"
+              style={{ top: "33.33%" }}
+            />
+            <div
+              className="grid-line grid-line-horizontal"
+              style={{ top: "66.66%" }}
+            />
+          </div>
+        )}
+        {showLevel && (
+          <div className="level-indicator">
+            <div
+              className="level-bubble"
+              style={{
+                left: `${Math.max(0, Math.min(100, 50 + deviceOrientation.gamma))}%`,
+              }}
+            />
+          </div>
+        )}
+        {isTimerRunning && <div className="timer-display">{timerCount}</div>}
       </div>
-      <div id="gui_controls">
-        {amountOfCameras > 1 && (
+
+      <div className="camera-settings">
+        {isDev && videoDevices.length > 1 && (
+          <select
+            className="camera-select"
+            value={selectedDeviceId}
+            onChange={(e) => handleDeviceChange(e.target.value)}
+          >
+            {videoDevices.map((device) => (
+              <option key={device.deviceId} value={device.deviceId}>
+                {device.label}
+              </option>
+            ))}
+          </select>
+        )}
+        <div className="settings-buttons-row">
           <button
             type="button"
-            id="switchCameraButton"
-            onClick={toggleCamera}
-            aria-pressed={currentFacingMode === "user"}
+            className="settings-button"
+            onClick={() => setTimerDuration((prev) => (prev + 3) % 12)}
           >
-            <FlipHorizontal size={36} color="white" />
+            <Timer size={20} />
+            {timerDuration > 0 ? `${timerDuration}s` : "Off"}
           </button>
-        )}
-        <button type="button" id="takePhotoButton" onClick={takeSnapshot}>
-          <CameraIcon size={48} color="white" />
+          <button
+            type="button"
+            className="settings-button"
+            onClick={() => setShowGrid(!showGrid)}
+          >
+            <Grid size={20} />
+            {showGrid ? "On" : "Off"}
+          </button>
+          <button
+            type="button"
+            className="settings-button"
+            onClick={() => setShowLevel(!showLevel)}
+          >
+            <Compass size={20} />
+            {showLevel ? "On" : "Off"}
+          </button>
+        </div>
+      </div>
+
+      <div id="gui_controls">
+        <button
+          type="button"
+          id="switchCameraButton"
+          onClick={toggleCamera}
+          aria-pressed={currentFacingMode === "user"}
+        >
+          <RefreshCw size={32} color="white" />
+        </button>
+        <button type="button" id="takePhotoButton" onClick={startTimer}>
+          <Camera size={40} color="white" />
         </button>
         <button
           type="button"
-          id="toggleFullScreenButton"
-          onClick={toggleFullscreen}
-          aria-pressed={isFullscreen}
+          id="galleryButton"
+          onClick={() => navigate(`/${ulid()}`)}
         >
-          {isFullscreen ? (
-            <Minimize size={48} color="white" />
+          {lastPhotoUrl ? (
+            <img src={lastPhotoUrl} alt="Last capture" />
           ) : (
-            <Maximize size={48} color="white" />
+            <Image size={32} color="white" />
           )}
         </button>
       </div>

@@ -8,14 +8,17 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "check": "bunx @biomejs/biome check --write .",
-    "check:ci": "bunx @biomejs/biome ci ."
+    "check": "bunx @biomejs/biome check --write ./src *.json",
+    "check:ci": "bunx @biomejs/biome ci ./src *.json"
   },
   "dependencies": {
+    "@types/react-router-dom": "^5.3.3",
     "lucide-react": "^0.475.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-grid-gallery": "1.0.1",
+    "react-router-dom": "^7.1.5",
+    "ulid": "^2.3.0",
     "yet-another-react-lightbox": "^3.14.0"
   },
   "devDependencies": {
