@@ -1,0 +1,29 @@
+{
+  "name": "happy-shot-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "check": "bunx @biomejs/biome check --write .",
+    "check:ci": "bunx @biomejs/biome ci ."
+  },
+  "dependencies": {
+    "lucide-react": "^0.475.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-grid-gallery": "1.0.1",
+    "yet-another-react-lightbox": "^3.14.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/react": "^18.2.28",
+    "@types/react-dom": "^18.2.13",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.1.0"
+  }
+}
