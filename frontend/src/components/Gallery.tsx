@@ -178,6 +178,8 @@ export const GalleryComponent = () => {
 
   return (
     <div>
+      <h1>Gallery {id}</h1>
+
       <button
         type="button"
         onClick={() => navigate("/")}

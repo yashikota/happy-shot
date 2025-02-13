@@ -28,7 +28,6 @@ export const CameraComponent = ({
   const [currentFacingMode, setCurrentFacingMode] = useState<
     "environment" | "user"
   >("environment");
-  const [amountOfCameras, setAmountOfCameras] = useState(0);
   const [showGrid, setShowGrid] = useState(false);
   const [showLevel, setShowLevel] = useState(false);
   const [timerDuration, setTimerDuration] = useState(0);
@@ -38,7 +37,6 @@ export const CameraComponent = ({
     beta: 0,
     gamma: 0,
   });
-  const [recordDuration, setRecordDuration] = useState(3);
   const [videoDevices, setVideoDevices] = useState<VideoDevice[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
   const isDev = import.meta.env.DEV;
@@ -69,7 +67,6 @@ export const CameraComponent = ({
                 label: device.label || `Camera ${device.deviceId.slice(0, 4)}`,
               }));
             setVideoDevices(vDevices);
-            setAmountOfCameras(vDevices.length);
             if (vDevices.length > 0) {
               setSelectedDeviceId(vDevices[0].deviceId);
               initCameraStream(vDevices[0].deviceId);
@@ -121,10 +118,10 @@ export const CameraComponent = ({
         isDev && deviceId
           ? { deviceId: { exact: deviceId } }
           : {
-              width: { ideal: 1920 },
-              height: { ideal: 1080 },
-              facingMode: currentFacingMode,
-            },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            facingMode: currentFacingMode,
+          },
     };
 
     try {
