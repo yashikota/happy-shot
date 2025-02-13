@@ -118,10 +118,10 @@ export const CameraComponent = ({
         isDev && deviceId
           ? { deviceId: { exact: deviceId } }
           : {
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-            facingMode: currentFacingMode,
-          },
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+              facingMode: currentFacingMode,
+            },
     };
 
     try {
