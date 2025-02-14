@@ -3,9 +3,16 @@ import os
 import threading
 import zipfile
 
+import uvicorn
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from minio import Minio
 from minio.error import S3Error
 from dotenv import load_dotenv
+from concurrent.futures import ThreadPoolExecutor
+
+load_dotenv()
 
 
 class MinioClient:
@@ -92,34 +99,61 @@ class MinioClient:
             return BytesIO(), e
 
 
+minio_client = MinioClient(
+    endpoint=os.getenv("MINIO_ENDPOINT"),
+    access_key=os.getenv("MINIO_ACCESS_KEY"),
+    secret_key=os.getenv("MINIO_SECRET_KEY"),
+    secure=os.getenv("MINIO_SECURE", "false").lower() == "true",
+)
+
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/images")
+def get_urls(bucket: str = Query(..., description="Bucket name")):
+    urls, err = minio_client.get_presigned_urls(bucket)
+    if err is not None:
+        raise HTTPException(status_code=500, detail=str(err))
+    return {"images": urls}
+
+
+@app.get("/download")
+def download_all(bucket: str = Query(..., description="Bucket name")):
+    try:
+        if not minio_client.client.bucket_exists(bucket):
+            raise HTTPException(status_code=404, detail="Bucket not found")
+
+        objects = list(minio_client.client.list_objects(bucket))
+        zip_buffer = BytesIO()
+
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+
+            def fetch_object(obj):
+                data = minio_client.client.get_object(bucket, obj.object_name).read()
+                return obj.object_name, data
+
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                futures = [executor.submit(fetch_object, obj) for obj in objects]
+                for future in futures:
+                    file_name, content = future.result()
+                    zip_file.writestr(file_name, content)
+
+        zip_buffer.seek(0)
+        return StreamingResponse(
+            zip_buffer,
+            media_type="application/zip",
+            headers={"Content-Disposition": "attachment; filename=images.zip"},
+        )
+    except S3Error as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
-    load_dotenv()
-
-    minio_client = MinioClient(
-        endpoint=os.getenv("MINIO_ENDPOINT"),
-        access_key=os.getenv("MINIO_ACCESS_KEY"),
-        secret_key=os.getenv("MINIO_SECRET_KEY"),
-        secure=os.getenv("MINIO_SECURE", "false").lower() == "true",
-    )
-
-    bucket_name = "images"
-    image_path = "image.jpg"
-
-    # 画像をアップロード
-    err = minio_client.upload_image(bucket_name, image_path)
-    if err is not None:
-        print(f"Upload failed: {err}")
-
-    # 署名付きURLを取得
-    urls, err = minio_client.get_presigned_urls(bucket_name)
-    if err is not None:
-        print(f"Failed to get presigned URLs: {err}")
-    for url in urls:
-        print(url)
-
-    # 一括ダウンロード
-    zip_buffer, err = minio_client.download_all_images(bucket_name)
-    if err is not None:
-        print(f"Failed to download images: {err}")
-    with open("images.zip", "wb") as f:
-        f.write(zip_buffer.read())
+    uvicorn.run("s3:app", host="0.0.0.0", port=5000, reload=True)
