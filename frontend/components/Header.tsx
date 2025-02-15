@@ -33,7 +33,7 @@ export function Header() {
         className="ml-auto text-white bg-blue-500 hover:bg-blue-700"
         onClick={handleShare}
       >
-        写真を共有する
+        共有する
       </Button>
     </header>
   );
