@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { ImageGallery } from "react-image-grid-gallery";
 
 const imagesArray: any = [
@@ -74,7 +75,8 @@ const imagesArray: any = [
   {
     id: "18",
     src: "https://c1.staticflickr.com/9/8707/28868704912_cba5c6600e_b.jpg",
-  }, {
+  },
+  {
     id: "19",
     src: "https://c2.staticflickr.com/9/8817/28973449265_07e3aa5d2e_b.jpg",
   },
@@ -126,10 +128,13 @@ const imagesArray: any = [
 
 export default function App() {
   return (
-    <ImageGallery
-      imagesInfoArray={imagesArray}
-      columnCount={"auto"}
-      gapSize={24}
-    />
+    <>
+      <ImageGallery
+        imagesInfoArray={imagesArray}
+        columnCount={"auto"}
+        gapSize={2}
+      />
+      <Button>Click me</Button>
+    </>
   );
 }

@@ -198,8 +198,15 @@ pyrightconfig.json
 
 # Images
 *.jpg
+*.JPG
 *.jpeg
 *.png
 
 # Archives
 *.zip
+
+# data
+*.csv
+
+# next
+.next/
