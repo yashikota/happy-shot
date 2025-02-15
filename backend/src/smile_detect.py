@@ -1,91 +1,108 @@
 import os
 import cv2
 import torch
-import tempfile
 from feat import Detector
 
-# Detectorの初期化（GPU使用）
-detector = Detector(
-    face_model="retinaface",
-    landmark_model="mobilefacenet",
-    au_model='svm',
-    emotion_model="resmasknet", 
-    device="cuda"
-)
 
-# CUDAが使用可能かどうかを確認
-if torch.cuda.is_available():
-    print("CUDA is available!")
-    print(f"Using GPU: {torch.cuda.get_device_name(0)}")
-else:
-    print("CUDA is not available. Using CPU.")
+# Detectorの初期化（GPUが利用可能か確認）
+def initialize_detector():
+    detector = Detector(
+        face_model="retinaface",
+        landmark_model="mobilefacenet",
+        au_model="svm",
+        emotion_model="resmasknet",
+        device="cuda",
+    )
 
-# 動画ファイルのパスと出力フォルダの設定
-video_path = "./video3.mp4"  # 動画ファイルのパスを指定
-output_dir = "./output_frames5/"
-os.makedirs(output_dir, exist_ok=True)
+    if torch.cuda.is_available():
+        print("CUDAが利用可能です！")
+        print(f"使用中のGPU: {torch.cuda.get_device_name(0)}")
+    else:
+        print("CUDAは利用できません。CPUを使用します。")
 
-# 動画の読み込み
-cap = cv2.VideoCapture(video_path)
+    return detector
 
-frame_idx = 0
-saved_count = 0
-smile_label = "happiness"
 
-while cap.isOpened():
-    ret, frame = cap.read()
-    if not ret:
-        break
-
-    frame_idx += 1
-
-    # 10フレームごとに処理を適用
-    if frame_idx % 10 != 0:
-        continue
-
-    print(f"Processing frame {frame_idx}...")  # フレーム番号の表示
-
+# 画像の処理と感情予測を行う
+def process_image(image, detector):
     try:
-        # フレーム (NumPy配列) を PNG 形式にエンコード
-        ret2, encoded_img = cv2.imencode('.png', frame)
-        if not ret2:
-            raise ValueError("Failed to encode frame")
-        
-        # 一時ファイルに保存して、そのパスを渡す
-        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
-            tmp_file.write(encoded_img.tobytes())
-            tmp_path = tmp_file.name
-
-        # 一時ファイルのパスを使って顔検出・感情認識を実施
-        prediction = detector.detect_image(tmp_path, face_identity_threshold = 0.8)
+        # 画像を直接メモリ上で処理
+        prediction = detector.detect_image(image, face_identity_threshold=0.8)
     except Exception as e:
-        print(f"Error processing frame {frame_idx}: {e}")
-        # 一時ファイルが残っている可能性があるので削除
-        if 'tmp_path' in locals() and os.path.exists(tmp_path):
-            os.remove(tmp_path)
-        continue
-    finally:
-        # 常に一時ファイルを削除
-        if 'tmp_path' in locals() and os.path.exists(tmp_path):
-            os.remove(tmp_path)
+        print(f"画像処理中にエラーが発生しました: {e}")
+        return None
 
+    return prediction
+
+
+# 感情を分析して笑顔を検出
+def analyze_emotions(prediction, smile_label="happiness"):
     valid_faces = 0
     smiling_faces = 0
 
-    # 各検出された顔についてループ
+    # 検出された顔について処理
     for idx, row in prediction.iterrows():
         valid_faces += 1
-
         emotions = prediction.emotions.iloc[idx]
         if emotions.idxmax() == smile_label:
             smiling_faces += 1
 
-    # 全ての有効な顔が笑顔の場合、フレームを保存
-    if valid_faces > 0 and smiling_faces / valid_faces >= 0.7:
-        output_path = os.path.join(output_dir, f"frame_{frame_idx:06d}.png")
-        cv2.imwrite(output_path, frame)
-        saved_count += 1
-        print(f"Saved frame {frame_idx} with {valid_faces} faces (all smiling).")
+    return valid_faces, smiling_faces
 
-cap.release()
-print(f"Finished processing video. Total frames saved: {saved_count}")
+
+# 笑顔の顔が検出された画像を保存
+def save_smiling_faces(image, valid_faces, smiling_faces, output_path):
+    if valid_faces > 0 and smiling_faces / valid_faces >= 0.7:
+        cv2.imwrite(output_path, image)
+        print(f"画像を保存しました: {output_path}")
+        return True
+    return False
+
+
+# ディレクトリ内のすべての画像を処理して笑顔の顔を保存
+def process_images_in_directory(image_dir, output_dir, detector):
+    os.makedirs(output_dir, exist_ok=True)
+
+    # 画像ファイルをディレクトリから取得
+    image_files = [
+        f for f in os.listdir(image_dir) if f.lower().endswith(("png", "jpg", "jpeg"))
+    ]
+    if not image_files:
+        print("指定されたディレクトリに画像がありません。")
+        return
+
+    saved_count = 0
+
+    # すべての画像ファイルを処理
+    for image_file in image_files:
+        image_path = os.path.join(image_dir, image_file)
+        print(f"画像 {image_path} を処理中...")
+
+        # 画像を読み込み
+        image = cv2.imread(image_path)
+        if image is None:
+            print(f"画像を読み込めませんでした: {image_path}")
+            continue
+
+        # 画像の処理と感情予測を実行
+        prediction = process_image(image_path, detector)
+        if prediction is None:
+            continue
+
+        # 感情を分析して笑顔の顔を検出
+        valid_faces, smiling_faces = analyze_emotions(prediction)
+
+        # 必要なら画像を保存
+        output_path = os.path.join(output_dir, image_file)
+        if save_smiling_faces(image, valid_faces, smiling_faces, output_path):
+            saved_count += 1
+
+    print(f"画像の処理が完了しました。保存した画像数: {saved_count}")
+
+
+if __name__ == "__main__":
+    image_dir = "./output_frames"  # 画像ファイルが入っているディレクトリのパス
+    output_dir = "./output_images/"  # 保存先のフォルダ
+
+    detector = initialize_detector()  # Detectorの初期化
+    process_images_in_directory(image_dir, output_dir, detector)  # 画像の処理を実行

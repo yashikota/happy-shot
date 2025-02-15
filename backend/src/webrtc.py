@@ -28,7 +28,7 @@ app.add_middleware(
 # ロギング設定
 logger = logging.getLogger("webrtc_server")
 logger.setLevel(logging.DEBUG)  # より詳細なログを有効化
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 handler = logging.StreamHandler()
 handler.setFormatter(formatter)
 logger.addHandler(handler)
@@ -66,7 +66,9 @@ async def capture_frames(track, pc_id):
                 logger.debug(f"{pc_id} Frame size: {width}x{height}")
 
                 # 絶対パスを使用してフレームを保存
-                filename = os.path.join(app.state.frames_dir, f"{pc_id}_{frame_count:04d}.jpg")
+                filename = os.path.join(
+                    app.state.frames_dir, f"{pc_id}_{frame_count:04d}.jpg"
+                )
                 success = cv2.imwrite(filename, img)
                 logger.debug(f"保存先: {filename}")
 
@@ -80,8 +82,10 @@ async def capture_frames(track, pc_id):
                 if frame_count % 10 == 0:
                     elapsed_time = current_time - start_time
                     avg_fps = frame_count / elapsed_time if elapsed_time > 0 else 0
-                    logger.info(f"{pc_id} Capture stats: frames={frame_count}, "
-                              f"elapsed={elapsed_time:.1f}s, avg_fps={avg_fps:.1f}")
+                    logger.info(
+                        f"{pc_id} Capture stats: frames={frame_count}, "
+                        f"elapsed={elapsed_time:.1f}s, avg_fps={avg_fps:.1f}"
+                    )
 
                 # フレームレート調整（約10FPS）
                 await asyncio.sleep(0.1)
@@ -114,7 +118,10 @@ async def offer(request: Request):
         configuration=RTCConfiguration(
             iceServers=[
                 RTCIceServer(
-                    urls=["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"]
+                    urls=[
+                        "stun:stun.l.google.com:19302",
+                        "stun:stun1.l.google.com:19302",
+                    ]
                 )
             ]
         )
@@ -145,20 +152,27 @@ async def offer(request: Request):
     # Configure transceivers before processing the offer
     transceiver = pc.addTransceiver("video", direction="recvonly")
     codecs = RTCRtpSender.getCapabilities("video").codecs
-    preferred_codecs = [codec for codec in codecs if codec.name in ["H264", "VP8"] and not codec.name.startswith("rtx")]
+    preferred_codecs = [
+        codec
+        for codec in codecs
+        if codec.name in ["H264", "VP8"] and not codec.name.startswith("rtx")
+    ]
     transceiver.setCodecPreferences(preferred_codecs)
 
     # ICE candidate のログ出力を強化
     @pc.on("icecandidate")
     def on_icecandidate(event):
         if event.candidate:
-            logger.info(f"{pc_id} New ICE candidate: type={event.candidate.type}, "
-                       f"protocol={event.candidate.protocol}, "
-                       f"address={event.candidate.address}, "
-                       f"port={event.candidate.port}, "
-                       f"foundation={event.candidate.foundation}")
+            logger.info(
+                f"{pc_id} New ICE candidate: type={event.candidate.type}, "
+                f"protocol={event.candidate.protocol}, "
+                f"address={event.candidate.address}, "
+                f"port={event.candidate.port}, "
+                f"foundation={event.candidate.foundation}"
+            )
         else:
             logger.info(f"{pc_id} ICE gathering completed")
+
     logger.info(f"{pc_id} Created PeerConnection with enhanced ICE configuration")
 
     @pc.on("iceconnectionstatechange")
@@ -191,7 +205,9 @@ async def offer(request: Request):
                     transceiver.direction = "sendrecv"
                     logger.info(f"{pc_id} Transceiver configured:")
                     logger.info(f"  - Direction: {transceiver.direction}")
-                    logger.info(f"  - Current direction: {transceiver.currentDirection}")
+                    logger.info(
+                        f"  - Current direction: {transceiver.currentDirection}"
+                    )
 
                 # フレームの継続的なキャプチャを開始
                 asyncio.create_task(capture_frames(track, pc_id))

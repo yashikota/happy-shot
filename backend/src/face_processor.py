@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from imutils import face_utils
 from scipy.ndimage import gaussian_filter1d
 import requests
+from ulid import ULID
 
 
 class FaceInstance:
@@ -17,7 +18,10 @@ class FaceInstance:
 
 class FaceProcessor:
     def __init__(
-        self, video_source, predictor_path="src/shape_predictor_68_face_landmarks.dat", id=0
+        self,
+        video_source,
+        predictor_path="src/shape_predictor_68_face_landmarks.dat",
+        id=str(ULID()),
     ):
         self.detector = dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor(predictor_path)
@@ -100,7 +104,9 @@ class FaceProcessor:
                 avg_scores.setdefault(frame, []).append(face.scores[i])
 
         avg_values, avg_frames = self.calculate_avg_values()
-        avg_values = [v for v in avg_values if isinstance(v, (int, float))]  # 数値のみを抽出
+        avg_values = [
+            v for v in avg_values if isinstance(v, (int, float))
+        ]  # 数値のみを抽出
         avg_values = np.array(avg_values, dtype=np.float64)
         smoothed_avg_values = gaussian_filter1d(avg_values, sigma=2)
 
@@ -135,20 +141,22 @@ class FaceProcessor:
                 # 画像を保存する
                 frame_filename = f"src/processed_images/frame_{frame_no}.jpg"
                 cv2.imwrite(frame_filename, frame)
-                
+
                 # 画像をアップロード
                 upload_url = f"https://app-122ab23f-3126-4106-9d44-988a8bd962de.ingress.apprun.sakura.ne.jp/upload?bucket={self.id}"
-                files = {'file': open(frame_filename, 'rb')}
-                
+                files = {"file": open(frame_filename, "rb")}
+
                 # POSTリクエストで画像をアップロード
                 response = requests.post(upload_url, files=files)
                 files.close()
-                
+
                 # レスポンスを表示（任意）
                 if response.status_code == 200:
                     print(f"Successfully uploaded frame {frame_no}")
                 else:
-                    print(f"Failed to upload frame {frame_no}, status code: {response.status_code}")
+                    print(
+                        f"Failed to upload frame {frame_no}, status code: {response.status_code}"
+                    )
 
         plt.plot(
             avg_frames,

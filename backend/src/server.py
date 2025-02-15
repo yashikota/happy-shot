@@ -9,26 +9,32 @@ from line import router as line_router
 
 # ロギングの設定
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
 
+
 # LINE Bot
 app.include_router(line_router)
 
+
 @app.post("/upload")
 async def upload_video(file: UploadFile = File(...)):
-    logger.info(f"ファイルアップロード開始: {file.filename}, content_type: {file.content_type}")
+    logger.info(
+        f"ファイルアップロード開始: {file.filename}, content_type: {file.content_type}"
+    )
     if not file.content_type.startswith("video/"):
         logger.error(f"不正なファイル形式: {file.content_type}")
-        raise HTTPException(status_code=400, detail="Invalid file type. Expected video.")
+        raise HTTPException(
+            status_code=400, detail="Invalid file type. Expected video."
+        )
 
     try:
         # Save the uploaded file to a temporary file
@@ -42,14 +48,18 @@ async def upload_video(file: UploadFile = File(...)):
         cap = cv2.VideoCapture(temp_file_path)
         if not cap.isOpened():
             logger.error("OpenCVでビデオファイルを開けませんでした")
-            raise HTTPException(status_code=500, detail="Could not open video file with OpenCV.")
+            raise HTTPException(
+                status_code=500, detail="Could not open video file with OpenCV."
+            )
 
         # (Example) Read first frame to process
         ret, frame = cap.read()
         cap.release()
         if not ret:
             logger.error("ビデオからフレームを読み取れませんでした")
-            raise HTTPException(status_code=500, detail="Failed to read frame from video.")
+            raise HTTPException(
+                status_code=500, detail="Failed to read frame from video."
+            )
 
         logger.info("ビデオの処理を開始")
         face_processor = FaceProcessor(temp_file_path)
@@ -61,7 +71,9 @@ async def upload_video(file: UploadFile = File(...)):
         logger.error(f"エラーが発生: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 if __name__ == "__main__":
     import uvicorn
+
     logger.info("サーバーを起動します")
     uvicorn.run("server:app", host="0.0.0.0", port=5000, reload=True)
