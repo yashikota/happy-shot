@@ -30,6 +30,7 @@ class FaceProcessor:
         self.capture = cv2.VideoCapture(video_source)
         self.job_id = job_id
         self.smile_detector = EmotionDetector()
+        self.id = job_id
 
     def calculate_eye_aspect_ratio(self, eye):
         A = np.linalg.norm(eye[1] - eye[5])
