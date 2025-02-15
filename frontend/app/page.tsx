@@ -112,11 +112,11 @@ export default function Home() {
                       disabled={uploading}
                     >
                       <Upload className="h-8 w-8" />
-                        <span>
+                      <span>
                         クリックまたは
                         <br />
                         ドラッグ＆ドロップで動画を選択
-                        </span>
+                      </span>
                     </Button>
                   </div>
                 </div>
