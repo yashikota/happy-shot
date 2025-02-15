@@ -5,8 +5,8 @@ import imutils
 import matplotlib.pyplot as plt
 from imutils import face_utils
 from scipy.ndimage import gaussian_filter1d
+from smile_detect import EmotionDetector
 import requests
-from ulid import ULID
 
 
 class FaceInstance:
@@ -20,15 +20,16 @@ class FaceProcessor:
     def __init__(
         self,
         video_source,
+        job_id,
         predictor_path="src/shape_predictor_68_face_landmarks.dat",
-        id=str(ULID()),
     ):
         self.detector = dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor(predictor_path)
         self.video_source = video_source
         self.face_instances = []
         self.capture = cv2.VideoCapture(video_source)
-        self.id = id
+        self.job_id = job_id
+        self.smile_detector = EmotionDetector()
 
     def calculate_eye_aspect_ratio(self, eye):
         A = np.linalg.norm(eye[1] - eye[5])
@@ -137,10 +138,15 @@ class FaceProcessor:
         for frame_no, _ in avg_ratios:
             self.capture.set(cv2.CAP_PROP_POS_FRAMES, frame_no)
             ret, frame = self.capture.read()
+
+            # 笑顔判定
+            if not self.smile_detector.process_single_image2(frame):
+                continue
+
             if ret:
                 # 画像を保存する
                 frame_filename = f"src/processed_images/frame_{frame_no}.jpg"
-                cv2.imwrite(frame_filename, frame)
+                # cv2.imwrite(frame_filename, frame)
 
                 # 画像をアップロード
                 upload_url = f"https://app-122ab23f-3126-4106-9d44-988a8bd962de.ingress.apprun.sakura.ne.jp/upload?bucket={self.id}"
@@ -261,5 +267,5 @@ class FaceProcessor:
 
 
 if __name__ == "__main__":
-    processor = FaceProcessor("src/video.mp4")
+    processor = FaceProcessor(video_source="src/video.mp4", job_id="test")
     processor.process_video()
