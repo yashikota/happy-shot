@@ -1,6 +1,8 @@
 "use client";
 
+import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import { ImageGallery } from "react-image-grid-gallery";
 
 const imagesArray: any = [
@@ -127,14 +129,29 @@ const imagesArray: any = [
 ];
 
 export default function App() {
+  const handleDownload = async () => {
+    console.log("Bulk download initiated");
+  };
+
   return (
     <>
-      <ImageGallery
-        imagesInfoArray={imagesArray}
-        columnCount={"auto"}
-        gapSize={2}
-      />
-      <Button>Click me</Button>
+      <Header />
+      <main className="pt-20 px-4">
+        <ImageGallery
+          imagesInfoArray={imagesArray}
+          columnCount={"auto"}
+          gapSize={8}
+        />
+      </main>
+
+      <Button
+        variant="default"
+        size="icon"
+        className="fixed bottom-6 right-6 rounded-full w-14 h-14 shadow-lg hover:shadow-xl transition-shadow bg-blue-500 text-white hover:bg-blue-700"
+        onClick={handleDownload}
+      >
+        <Download className="w-6 h-6" />
+      </Button>
     </>
   );
 }
