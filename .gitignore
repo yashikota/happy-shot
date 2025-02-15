@@ -200,12 +200,14 @@ pyrightconfig.json
 *.JPG
 *.jpeg
 *.png
+*.mp4
 
 # Archives
 *.zip
 
 # data
 *.csv
+*.dat
 
 # next
 .next/

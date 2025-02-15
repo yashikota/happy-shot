@@ -1,3 +1,3 @@
 all:
-	uv run ruff check
-	uv run ruff format
+	uvx ruff check
+	uvx ruff format
