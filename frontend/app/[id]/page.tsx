@@ -70,8 +70,14 @@ export default function GalleryPage() {
             gapSize={8}
           />
         ) : (
-          <div className="text-center text-gray-500 min-h-[50vh] flex items-center justify-center">
-            No images found
+          <div className="text-center text-gray-500 min-h-[50vh] flex flex-col items-center justify-center gap-4">
+            <p>画像が見つかりません</p>
+            <a
+              href="/"
+              className="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded"
+            >
+              ホームに戻る
+            </a>
           </div>
         )}
       </main>
