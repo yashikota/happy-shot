@@ -32,7 +32,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
 
       - name: Run Lint
-        run: uv run ruff check --output-format=github .
+        run: uvx ruff check --output-format=github .
 
       - name: Run Format
-        run: uv run ruff format . --check --diff
+        run: uvx ruff format . --check --diff
