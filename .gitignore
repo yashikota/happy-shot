@@ -211,3 +211,6 @@ pyrightconfig.json
 
 # next
 .next/
+
+# nohup
+*.out
