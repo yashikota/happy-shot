@@ -5,12 +5,36 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "aiortc>=1.10.1",
+    "cmake>=3.31.4",
+    "cython>=3.0.12",
+    "dlib>=19.24.6",
+    "easydict>=1.13",
     "fastapi[standard]>=0.115.8",
+    "imutils>=0.5.4",
+    "insightface>=0.7.3",
     "minio>=7.2.15",
+    "numpy",
+    "onnxruntime>=1.20.1",
+    "opencv-python>=4.8.1.78",
+    "pillow>=11.1.0",
+    "py-feat>=0.6.2",
     "python-dotenv>=1.0.1",
+    "python-ulid>=3.0.0",
+    "requests>=2.32.3",
+    "scipy<1.11.0",
+    "torch>=2.6.0",
+    "uvicorn>=0.34.0",
 ]
 
 [tool.uv]
 dev-dependencies = [
     "ruff>=0.9.6",
 ]
+find-links = [
+    "https://download.pytorch.org/whl/cu124/torch",
+    "https://download.pytorch.org/whl/cu124/torchvision",
+]
+
+[tool.uv.workspace]
+members = ["s3"]
