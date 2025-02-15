@@ -1,157 +1,159 @@
-"use client";
+"use client"
 
-import { Header } from "@/components/Header";
-import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
-import { ImageGallery } from "react-image-grid-gallery";
+import { useState, useRef } from "react"
+import { Upload, CheckCircle2, AlertCircle } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
+import { useRouter } from "next/navigation"
 
-const imagesArray: any = [
-  {
-    id: "1",
-    src: "https://c2.staticflickr.com/9/8817/28973449265_07e3aa5d2e_b.jpg",
-  },
-  {
-    id: "2",
-    src: "https://c2.staticflickr.com/9/8356/28897120681_3b2c0f43e0_b.jpg",
-  },
-  {
-    id: "3",
-    src: "https://c4.staticflickr.com/9/8887/28897124891_98c4fdd82b_b.jpg",
-  },
-  {
-    id: "4",
-    src: "https://c7.staticflickr.com/9/8546/28354329294_bb45ba31fa_b.jpg",
-  },
-  {
-    id: "5",
-    src: "https://c6.staticflickr.com/9/8890/28897154101_a8f55be225_b.jpg",
-  },
-  {
-    id: "6",
-    src: "https://c5.staticflickr.com/9/8768/28941110956_b05ab588c1_b.jpg",
-  },
-  {
-    id: "7",
-    src: "https://c3.staticflickr.com/9/8583/28354353794_9f2d08d8c0_b.jpg",
-  },
-  {
-    id: "8",
-    src: "https://c7.staticflickr.com/9/8569/28941134686_d57273d933_b.jpg",
-  },
-  {
-    id: "9",
-    src: "https://c6.staticflickr.com/9/8342/28897193381_800db6419e_b.jpg",
-  },
-  {
-    id: "10",
-    src: "https://c2.staticflickr.com/9/8239/28897202241_1497bec71a_b.jpg",
-  },
-  {
-    id: "11",
-    src: "https://c7.staticflickr.com/9/8785/28687743710_3580fcb5f0_b.jpg",
-  },
-  {
-    id: "12",
-    src: "https://c6.staticflickr.com/9/8520/28357073053_cafcb3da6f_b.jpg",
-  },
-  {
-    id: "13",
-    src: "https://c8.staticflickr.com/9/8104/28973555735_ae7c208970_b.jpg",
-  },
-  {
-    id: "14",
-    src: "https://c4.staticflickr.com/9/8562/28897228731_ff4447ef5f_b.jpg",
-  },
-  {
-    id: "15",
-    src: "https://c2.staticflickr.com/8/7577/28973580825_d8f541ba3f_b.jpg",
-  },
-  {
-    id: "16",
-    src: "https://c7.staticflickr.com/9/8106/28941228886_86d1450016_b.jpg",
-  },
-  {
-    id: "17",
-    src: "https://c1.staticflickr.com/9/8330/28941240416_71d2a7af8e_b.jpg",
-  },
-  {
-    id: "18",
-    src: "https://c1.staticflickr.com/9/8707/28868704912_cba5c6600e_b.jpg",
-  },
-  {
-    id: "19",
-    src: "https://c2.staticflickr.com/9/8817/28973449265_07e3aa5d2e_b.jpg",
-  },
-  {
-    id: "20",
-    src: "https://c2.staticflickr.com/9/8356/28897120681_3b2c0f43e0_b.jpg",
-  },
-  {
-    id: "21",
-    src: "https://c4.staticflickr.com/9/8887/28897124891_98c4fdd82b_b.jpg",
-  },
-  {
-    id: "22",
-    src: "https://c7.staticflickr.com/9/8546/28354329294_bb45ba31fa_b.jpg",
-  },
-  {
-    id: "23",
-    src: "https://c6.staticflickr.com/9/8890/28897154101_a8f55be225_b.jpg",
-  },
-  {
-    id: "24",
-    src: "https://c5.staticflickr.com/9/8768/28941110956_b05ab588c1_b.jpg",
-  },
-  {
-    id: "25",
-    src: "https://c3.staticflickr.com/9/8583/28354353794_9f2d08d8c0_b.jpg",
-  },
-  {
-    id: "26",
-    src: "https://c7.staticflickr.com/9/8569/28941134686_d57273d933_b.jpg",
-  },
-  {
-    id: "27",
-    src: "https://c6.staticflickr.com/9/8342/28897193381_800db6419e_b.jpg",
-  },
-  {
-    id: "28",
-    src: "https://c2.staticflickr.com/9/8239/28897202241_1497bec71a_b.jpg",
-  },
-  {
-    id: "29",
-    src: "https://c7.staticflickr.com/9/8785/28687743710_3580fcb5f0_b.jpg",
-  },
-  {
-    id: "30",
-    src: "https://c6.staticflickr.com/9/8520/28357073053_cafcb3da6f_b.jpg",
-  },
-];
+interface VideoPreview {
+  file: File
+  url: string
+}
 
-export default function App() {
-  const handleDownload = async () => {
-    console.log("Bulk download initiated");
-  };
+export default function Home() {
+  const router = useRouter()
+  const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+  const [videoPreview, setVideoPreview] = useState<VideoPreview | null>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file && file.type.startsWith("video/")) {
+      const url = URL.createObjectURL(file)
+      setVideoPreview({ file, url })
+      setError(null)
+    } else {
+      setError("動画ファイルのみアップロード可能です")
+      setVideoPreview(null)
+    }
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!videoPreview) {
+      setError("ファイルを選択してください")
+      return
+    }
+
+    setUploading(true)
+    setError(null)
+    setSuccess(false)
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      const formData = new FormData()
+      formData.append("video", videoPreview.file)
+
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round((event.loaded / event.total) * 100)
+          setProgress(percentComplete)
+        }
+      })
+
+      xhr.addEventListener("load", () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const response = JSON.parse(xhr.responseText)
+          setSuccess(true)
+          setTimeout(() => {
+            router.push(`/${response.id}`)
+          }, 1000)
+          resolve(response)
+        } else {
+          setError("アップロードに失敗しました")
+          reject(new Error("Upload failed"))
+        }
+        setUploading(false)
+      })
+
+      xhr.addEventListener("error", () => {
+        setError("エラーが発生しました")
+        setUploading(false)
+        reject(new Error("Network error"))
+      })
+
+      xhr.open("POST", "/api/upload")
+      xhr.send(formData)
+    }).catch((err) => {
+      setError(err instanceof Error ? err.message : "エラーが発生しました")
+      setUploading(false)
+      setProgress(0)
+    })
+  }
 
   return (
-    <>
-      <Header />
-      <main className="pt-20 px-4">
-        <ImageGallery
-          imagesInfoArray={imagesArray}
-          columnCount={"auto"}
-          gapSize={8}
-        />
-      </main>
-
-      <Button
-        variant="default"
-        size="icon"
-        className="fixed bottom-6 right-6 rounded-full w-14 h-14 shadow-lg hover:shadow-xl transition-shadow bg-blue-500 text-white hover:bg-blue-700"
-        onClick={handleDownload}
-      >
-        <Download className="w-6 h-6" />
-      </Button>
-    </>
-  );
+    <main className="container mx-auto py-8 px-4">
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle>動画アップロード</CardTitle>
+          <CardDescription>アップロードする動画ファイルを選択してください</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid w-full gap-4">
+              <div className="grid gap-2">
+                <label htmlFor="video" className="sr-only">
+                  動画を選択
+                </label>
+                <div className="relative">
+                  <input
+                    id="video"
+                    type="file"
+                    name="video"
+                    accept="video/*"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    onChange={handleFileChange}
+                    disabled={uploading}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-32 flex flex-col items-center justify-center gap-2"
+                    disabled={uploading}
+                  >
+                    <Upload className="h-8 w-8" />
+                    <span>クリックまたはドラッグ＆ドロップで動画を選択</span>
+                  </Button>
+                </div>
+              </div>
+              {videoPreview && (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">ファイル名: {videoPreview.file.name}</p>
+                  <div className="relative rounded-lg overflow-hidden bg-black aspect-video">
+                    <video ref={videoRef} src={videoPreview.url} className="w-full h-full" controls />
+                  </div>
+                </div>
+              )}
+              {uploading && (
+                <div className="space-y-2">
+                  <Progress value={progress} className="w-full" />
+                  <p className="text-sm text-center text-muted-foreground">アップロード中... {progress}%</p>
+                </div>
+              )}
+              {error && (
+                <div className="flex items-center gap-2 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>{error}</span>
+                </div>
+              )}
+              {success && (
+                <div className="flex items-center gap-2 text-sm text-green-600">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>アップロードが完了しました</span>
+                </div>
+              )}
+              <Button type="submit" disabled={uploading || !videoPreview}>
+                {uploading ? "アップロード中..." : "アップロード"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </main>
+  )
 }
