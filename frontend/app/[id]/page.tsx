@@ -7,6 +7,9 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ImageGallery } from "react-image-grid-gallery";
 
+const baseUrl =
+  "https://app-122ab23f-3126-4106-9d44-988a8bd962de.ingress.apprun.sakura.ne.jp";
+
 export default function GalleryPage() {
   const params = useParams();
   const id = params.id as string;
@@ -16,7 +19,7 @@ export default function GalleryPage() {
   useEffect(() => {
     if (id) {
       setLoading(true);
-      fetch(`http://34.97.198.75:5000/images?bucket=${id}`)
+      fetch(`${baseUrl}/images?bucket=${id}`)
         .then((res) => res.json())
         .then((data) => {
           setImages(data.images || []);
@@ -31,9 +34,7 @@ export default function GalleryPage() {
 
   const handleDownload = async () => {
     try {
-      const response = await fetch(
-        `http://34.97.198.75:5000/download?bucket=${id}`,
-      );
+      const response = await fetch(`${baseUrl}/download?bucket=${id}`);
       if (!response.ok) {
         throw new Error("Download failed");
       }
