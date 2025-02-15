@@ -52,48 +52,29 @@ export default function Home() {
     setError(null);
     setSuccess(false);
 
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      const formData = new FormData();
-      formData.append("video", videoPreview.file);
+    const formData = new FormData();
+    formData.append("file", videoPreview.file);
 
-      xhr.upload.addEventListener("progress", (event) => {
-        if (event.lengthComputable) {
-          const percentComplete = Math.round(
-            (event.loaded / event.total) * 100,
-          );
-          setProgress(percentComplete);
-        }
+    try {
+      const response = await fetch("https://happy-shot.yashikota.com/upload", {
+        method: "POST",
+        body: formData,
       });
 
-      xhr.addEventListener("load", () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          const response = JSON.parse(xhr.responseText);
-          setSuccess(true);
-          setTimeout(() => {
-            router.push(`/${response.id}`);
-          }, 1000);
-          resolve(response);
-        } else {
-          setError("アップロードに失敗しました");
-          reject(new Error("Upload failed"));
-        }
-        setUploading(false);
-      });
+      if (!response.ok) {
+        throw new Error("アップロードに失敗しました");
+      }
 
-      xhr.addEventListener("error", () => {
-        setError("エラーが発生しました");
-        setUploading(false);
-        reject(new Error("Network error"));
-      });
-
-      xhr.open("POST", "/api/upload");
-      xhr.send(formData);
-    }).catch((err) => {
+      const data = await response.json();
+      setSuccess(true);
+      setTimeout(() => {
+        router.push(`/${data.id}`);
+      }, 1000);
+    } catch (err) {
       setError(err instanceof Error ? err.message : "エラーが発生しました");
+    } finally {
       setUploading(false);
-      setProgress(0);
-    });
+    }
   }
 
   return (
@@ -146,16 +127,7 @@ export default function Home() {
                         src={videoPreview?.url || ""}
                         className="w-full h-full"
                         controls
-                      >
-                        {videoPreview && (
-                          <track
-                            default
-                            kind="captions"
-                            src=""
-                            label="captions"
-                          />
-                        )}
-                      </video>
+                      />
                     </div>
                   </div>
                 )}
@@ -163,7 +135,7 @@ export default function Home() {
                   <div className="space-y-2">
                     <Progress value={progress} className="w-full" />
                     <p className="text-sm text-center text-muted-foreground">
-                      アップロード中... {progress}%
+                      アップロード中...
                     </p>
                   </div>
                 )}
@@ -208,6 +180,7 @@ export default function Home() {
                   onClick={() => {
                     if (navigateId) router.push(`/${navigateId}`);
                   }}
+                  disabled={!navigateId}
                 >
                   移動
                 </Button>

@@ -6,6 +6,7 @@ from tempfile import NamedTemporaryFile
 
 from face_processor import FaceProcessor
 from line import router as line_router
+from fastapi.middleware.cors import CORSMiddleware
 
 # ロギングの設定
 logging.basicConfig(
@@ -15,6 +16,13 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/health")
 async def health():
