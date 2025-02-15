@@ -11,9 +11,11 @@ from linebot.v3.messaging import (
     MessagingApi,
     ReplyMessageRequest,
     TextMessage,
+    PushMessageRequest,
 )
 from linebot.v3.webhooks import MessageEvent, TextMessageContent, VideoMessageContent
 from dotenv import load_dotenv
+import uuid
 
 # ロガーの取得
 logger = logging.getLogger(__name__)
@@ -29,6 +31,30 @@ router = APIRouter(
     tags=["line"],
     responses={404: {"description": "Not found"}},
 )
+
+
+async def send_line_notification(message: str, user_id: str):
+    """LINEにプッシュメッセージを送信する"""
+    if not user_id:
+        logger.error("user_idが設定されていません")
+        return
+
+    retry_key = str(uuid.uuid4())
+    try:
+        with ApiClient(configuration) as api_client:
+            line_bot_api = MessagingApi(api_client)
+            response = line_bot_api.push_message(
+                PushMessageRequest(
+                    to=user_id,
+                    messages=[TextMessage(text=message)],
+                ),
+                _headers={"X-Line-Retry-Key": retry_key},
+            )
+            logger.info(f"プッシュメッセージを送信しました: {message}")
+            return response
+    except Exception as e:
+        logger.error(f"プッシュメッセージの送信に失敗しました: {str(e)}")
+        return None
 
 
 async def check_video_status(message_id: str) -> bool:
@@ -123,17 +149,26 @@ async def _handle_video_message(event):
     message_id = event.message.id
     logger.info(f"動画メッセージを受信しました。message_id: {message_id}")
 
+    user_id = event.source.user_id
+    if not user_id:
+        logger.error("ユーザーIDが取得できません")
+        return
+    logger.info(f"ユーザーID: {user_id}")
+
     # まず受信確認のメッセージを送信
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
-        line_bot_api.reply_message_with_http_info(
-            ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=[
-                    TextMessage(text="動画を受信しました。保存処理を開始します...")
-                ],
+        try:
+            line_bot_api.reply_message_with_http_info(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[
+                        TextMessage(text="動画を受信しました。処理を開始します...")
+                    ],
+                )
             )
-        )
+        except Exception as e:
+            logger.error(f"初回返信の送信に失敗しました: {str(e)}")
 
     # 動画の保存パス
     save_dir = "uploaded_videos"
@@ -157,3 +192,63 @@ async def _handle_video_message(event):
         logger.info(f"動画の保存が完了しました: {save_path}")
     else:
         logger.error("動画の保存に失敗しました")
+
+    # 抽出処理およびアップロード処理を開始する
+    job_id = None
+    async with aiohttp.ClientSession() as session:
+        url = "https://happy-shot.yashikota.com/upload"
+        form = aiohttp.FormData()
+        try:
+            with open(save_path, "rb") as f:
+                form.add_field(
+                    "file", f, filename=f"{message_id}.mp4", content_type="video/mp4"
+                )
+                async with session.post(url, data=form) as response:
+                    if not response.ok:
+                        logger.error("アップロードに失敗しました", response.status)
+                        await send_line_notification(
+                            "動画のアップロードに失敗しました。", user_id
+                        )
+                    else:
+                        data = await response.json()
+                        job_id = data.get("job_id")
+                        job_status = data.get("status")
+                        logger.info(
+                            f"アップロードに成功しました: {job_id=}, {job_status=}"
+                        )
+        except Exception as e:
+            logger.error("アップロード処理でエラーが発生しました", e)
+            await send_line_notification(
+                "アップロード処理中にエラーが発生しました。", user_id
+            )
+
+    if job_id:
+        # 結果を待つ
+        polling_url = f"https://happy-shot.yashikota.com/jobs/{job_id}"
+        for attempt in range(30):
+            async with aiohttp.ClientSession() as session:
+                async with session.get(polling_url) as resp:
+                    if resp.status == 200:
+                        result = await resp.json()
+                        status = result.get("status")
+                        logger.info(
+                            f"ジョブのステータス: {status} (試行回数 {attempt + 1})"
+                        )
+                        if status == "completed":
+                            await send_line_notification(
+                                f"アルバムの作成が完了しました！\nhttps://happy-shot.vercel.app/{job_id}",
+                                user_id,
+                            )
+                            break
+                        elif status == "failed":
+                            error_msg = result.get(
+                                "error", "処理中にエラーが発生しました"
+                            )
+                            logger.error(error_msg)
+                            await send_line_notification(
+                                "処理中にエラーが発生しました", user_id
+                            )
+                            break
+                    else:
+                        logger.error(f"ステータスの取得に失敗しました: {resp.status}")
+            await asyncio.sleep(2)
