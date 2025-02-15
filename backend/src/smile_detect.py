@@ -1,4 +1,3 @@
-import os
 import cv2
 import torch
 from feat import Detector
@@ -40,7 +39,6 @@ def analyze_emotions(prediction, smile_label="happiness"):
     valid_faces = 0
     smiling_faces = 0
 
-    # 検出された顔について処理
     for idx, row in prediction.iterrows():
         valid_faces += 1
         emotions = prediction.emotions.iloc[idx]
@@ -59,50 +57,36 @@ def save_smiling_faces(image, valid_faces, smiling_faces, output_path):
     return False
 
 
-# ディレクトリ内のすべての画像を処理して笑顔の顔を保存
-def process_images_in_directory(image_dir, output_dir, detector):
-    os.makedirs(output_dir, exist_ok=True)
+# **1枚の画像を処理する関数**
+def process_single_image(image_path, output_path, detector):
+    print(f"画像 {image_path} を処理中...")
 
-    # 画像ファイルをディレクトリから取得
-    image_files = [
-        f for f in os.listdir(image_dir) if f.lower().endswith(("png", "jpg", "jpeg"))
-    ]
-    if not image_files:
-        print("指定されたディレクトリに画像がありません。")
+    # 画像を読み込み
+    image = cv2.imread(image_path)
+    if image is None:
+        print(f"画像を読み込めませんでした: {image_path}")
         return
 
-    saved_count = 0
+    # 画像の処理と感情予測を実行
+    prediction = process_image(image_path, detector)
+    if prediction is None:
+        return
 
-    # すべての画像ファイルを処理
-    for image_file in image_files:
-        image_path = os.path.join(image_dir, image_file)
-        print(f"画像 {image_path} を処理中...")
+    # 感情を分析して笑顔の顔を検出
+    valid_faces, smiling_faces = analyze_emotions(prediction)
 
-        # 画像を読み込み
-        image = cv2.imread(image_path)
-        if image is None:
-            print(f"画像を読み込めませんでした: {image_path}")
-            continue
-
-        # 画像の処理と感情予測を実行
-        prediction = process_image(image_path, detector)
-        if prediction is None:
-            continue
-
-        # 感情を分析して笑顔の顔を検出
-        valid_faces, smiling_faces = analyze_emotions(prediction)
-
-        # 必要なら画像を保存
-        output_path = os.path.join(output_dir, image_file)
-        if save_smiling_faces(image, valid_faces, smiling_faces, output_path):
-            saved_count += 1
-
-    print(f"画像の処理が完了しました。保存した画像数: {saved_count}")
+    # 必要なら画像を保存
+    if save_smiling_faces(image, valid_faces, smiling_faces, output_path):
+        print(f"笑顔の画像が保存されました: {output_path}")
+    else:
+        print("笑顔の閾値を満たさなかったため、画像は保存されませんでした。")
 
 
 if __name__ == "__main__":
-    image_dir = "./output_frames"  # 画像ファイルが入っているディレクトリのパス
-    output_dir = "./output_images/"  # 保存先のフォルダ
+    image_path = "./output_frames/frame_000740.png"  # **処理したい画像のパス**
+    output_path = (
+        "./output_images/falkfjalkjdf:ajlgjalgja.png"  # **保存する画像のパス**
+    )
 
     detector = initialize_detector()  # Detectorの初期化
-    process_images_in_directory(image_dir, output_dir, detector)  # 画像の処理を実行
+    process_single_image(image_path, output_path, detector)  # **1枚の画像を処理**
