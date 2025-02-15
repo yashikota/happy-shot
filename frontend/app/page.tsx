@@ -112,7 +112,11 @@ export default function Home() {
                       disabled={uploading}
                     >
                       <Upload className="h-8 w-8" />
-                      <span>クリックまたはドラッグ＆ドロップで動画を選択</span>
+                        <span>
+                        クリックまたは
+                        <br />
+                        ドラッグ＆ドロップで動画を選択
+                        </span>
                     </Button>
                   </div>
                 </div>
@@ -180,7 +184,6 @@ export default function Home() {
                   onClick={() => {
                     if (navigateId) router.push(`/${navigateId}`);
                   }}
-                  disabled={!navigateId}
                 >
                   移動
                 </Button>
