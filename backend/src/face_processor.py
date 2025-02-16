@@ -1,12 +1,15 @@
+import tempfile
+
 import cv2
 import dlib
-import numpy as np
 import imutils
 import matplotlib.pyplot as plt
+import numpy as np
+import requests
 from imutils import face_utils
 from scipy.ndimage import gaussian_filter1d
+
 from smile_detect import EmotionDetector
-import requests
 
 
 class FaceInstance:
@@ -20,17 +23,16 @@ class FaceProcessor:
     def __init__(
         self,
         video_source,
-        job_id,
         predictor_path="src/shape_predictor_68_face_landmarks.dat",
+        id="test",
     ):
         self.detector = dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor(predictor_path)
         self.video_source = video_source
         self.face_instances = []
         self.capture = cv2.VideoCapture(video_source)
-        self.job_id = job_id
         self.smile_detector = EmotionDetector()
-        self.id = job_id
+        self.id = id.lower()
 
     def calculate_eye_aspect_ratio(self, eye):
         A = np.linalg.norm(eye[1] - eye[5])
@@ -106,10 +108,13 @@ class FaceProcessor:
                 avg_scores.setdefault(frame, []).append(face.scores[i])
 
         avg_values, avg_frames = self.calculate_avg_values()
-        avg_values = [
-            v for v in avg_values if isinstance(v, (int, float))
-        ]  # 数値のみを抽出
+        avg_values = [v for v in avg_values if isinstance(v, (int, float))]
         avg_values = np.array(avg_values, dtype=np.float64)
+
+        # Ensure arrays have the same length
+        min_len = min(len(avg_frames), len(avg_values))
+        avg_frames = np.array(avg_frames[:min_len])
+        avg_values = avg_values[:min_len]
         smoothed_avg_values = gaussian_filter1d(avg_values, sigma=2)
 
         diff = np.diff(smoothed_avg_values)
@@ -118,7 +123,9 @@ class FaceProcessor:
             for i in range(1, len(diff))
             if diff[i - 1] > 0 and diff[i] < 0
         ]
-        peak_scores = {f: smoothed_avg_values[avg_frames.index(f)] for f in peak_frames}
+        peak_scores = {
+            f: smoothed_avg_values[list(avg_frames).index(f)] for f in peak_frames
+        }
         peak_frames = sorted(peak_scores, key=lambda x: peak_scores[x], reverse=True)
         peak_frames = peak_frames[: int(len(peak_frames) * 0.7)]
         print("上に凸の頂点となるフレーム番号:", peak_frames)
@@ -146,36 +153,32 @@ class FaceProcessor:
 
             if ret:
                 # 画像を保存する
-                frame_filename = f"src/processed_images/frame_{frame_no}.jpg"
-                # cv2.imwrite(frame_filename, frame)
+                temp_file = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+                frame_filename = temp_file.name
+                temp_file.close()
+                cv2.imwrite(frame_filename, frame)
 
                 # 画像をアップロード
                 upload_url = f"https://app-122ab23f-3126-4106-9d44-988a8bd962de.ingress.apprun.sakura.ne.jp/upload?bucket={self.id}"
                 files = {"file": open(frame_filename, "rb")}
-
-                # POSTリクエストで画像をアップロード
                 response = requests.post(upload_url, files=files)
-                files.close()
-
-                # レスポンスを表示（任意）
                 if response.status_code == 200:
                     print(f"Successfully uploaded frame {frame_no}")
                 else:
                     print(
                         f"Failed to upload frame {frame_no}, status code: {response.status_code}"
                     )
+                files["file"].close()
 
-        plt.plot(
-            avg_frames,
-            smoothed_avg_values,
-            label="Smoothed Average Score",
-            linestyle="dashed",
-            color="black",
-        )
-        plt.xlabel("Frame Number")
-        plt.ylabel("Face Score")
-        plt.legend()
-        plt.show()
+        # plt.plot(
+        #     avg_frames[:len(smoothed_avg_values)],  # xとyの次元を一致させる
+        #     smoothed_avg_values,
+        #     label="Smoothed Average Score",
+        # )
+        # plt.xlabel("Frame Number")
+        # plt.ylabel("Face Score")
+        # plt.legend()
+        # plt.show()
 
     def process_video(self):
         while True:
@@ -268,5 +271,5 @@ class FaceProcessor:
 
 
 if __name__ == "__main__":
-    processor = FaceProcessor(video_source="src/video.mp4", job_id="test")
+    processor = FaceProcessor(video_source="src/video.mp4", id="test")
     processor.process_video()

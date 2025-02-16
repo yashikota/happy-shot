@@ -1,10 +1,11 @@
-import cv2
-import torch
-import tempfile
 import os
+import tempfile
+
+import cv2
+import numpy as np
+import torch
 from feat import Detector
 from PIL import Image
-import numpy as np
 
 
 class EmotionDetector:

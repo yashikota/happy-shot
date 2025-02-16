@@ -1,19 +1,16 @@
 import asyncio
 import logging
-from ulid import ULID
-import cv2
 import time
-from aiortc import (
-    RTCPeerConnection,
-    RTCSessionDescription,
-    RTCRtpSender,
-    RTCConfiguration,
-    RTCIceServer,
-)  # type: ignore
+
+import cv2
+from aiortc import RTCIceServer  # type: ignore
+from aiortc import (RTCConfiguration, RTCPeerConnection, RTCRtpSender,
+                    RTCSessionDescription)
 from aiortc.contrib.media import MediaRelay  # type: ignore
 from fastapi import FastAPI, Request  # type: ignore
-from fastapi.responses import JSONResponse  # type: ignore
 from fastapi.middleware.cors import CORSMiddleware  # CORS対応
+from fastapi.responses import JSONResponse  # type: ignore
+from ulid import ULID
 
 # FastAPIアプリの初期化
 app = FastAPI()
@@ -265,8 +262,9 @@ async def on_shutdown():
 
 
 if __name__ == "__main__":
-    import uvicorn
     import os
+
+    import uvicorn
 
     # 画像保存用フォルダの作成（絶対パスを使用）
     frames_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frames")

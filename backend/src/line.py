@@ -1,21 +1,18 @@
 import asyncio
-import os
-import aiohttp
 import logging
-from fastapi import APIRouter, Request, HTTPException
+import os
+import uuid
+
+import aiohttp
+from dotenv import load_dotenv
+from fastapi import APIRouter, HTTPException, Request
 from linebot.v3 import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
-from linebot.v3.messaging import (
-    Configuration,
-    ApiClient,
-    MessagingApi,
-    ReplyMessageRequest,
-    TextMessage,
-    PushMessageRequest,
-)
-from linebot.v3.webhooks import MessageEvent, TextMessageContent, VideoMessageContent
-from dotenv import load_dotenv
-import uuid
+from linebot.v3.messaging import (ApiClient, Configuration, MessagingApi,
+                                  PushMessageRequest, ReplyMessageRequest,
+                                  TextMessage)
+from linebot.v3.webhooks import (MessageEvent, TextMessageContent,
+                                 VideoMessageContent)
 
 # ロガーの取得
 logger = logging.getLogger(__name__)
@@ -193,8 +190,8 @@ async def _handle_video_message(event):
     else:
         logger.error("動画の保存に失敗しました")
 
-    # 抽出処理およびアップロード処理を開始する
-    job_id = None
+    # 抽出処理およびアップロード処理
+    process_id = None
     async with aiohttp.ClientSession() as session:
         url = "https://happy-shot.yashikota.com/upload"
         form = aiohttp.FormData()
@@ -205,50 +202,28 @@ async def _handle_video_message(event):
                 )
                 async with session.post(url, data=form) as response:
                     if not response.ok:
-                        logger.error("アップロードに失敗しました", response.status)
+                        logger.error(f"アップロードに失敗しました: {response.status}")
                         await send_line_notification(
                             "動画のアップロードに失敗しました。", user_id
                         )
                     else:
                         data = await response.json()
-                        job_id = data.get("job_id")
-                        job_status = data.get("status")
-                        logger.info(
-                            f"アップロードに成功しました: {job_id=}, {job_status=}"
-                        )
+                        process_id = data.get("process_id")
+                        if process_id:
+                            logger.info(
+                                f"アップロード処理が完了しました: {process_id=}"
+                            )
+                            await send_line_notification(
+                                f"アルバムの作成が完了しました！\nhttps://happy-shot.vercel.app/{process_id}",
+                                user_id,
+                            )
+                        else:
+                            logger.error("アップロードレスポンスにIDが含まれていません")
+                            await send_line_notification(
+                                "アップロード処理中にエラーが発生しました。", user_id
+                            )
         except Exception as e:
-            logger.error("アップロード処理でエラーが発生しました", e)
+            logger.error(f"アップロード処理でエラーが発生しました: {str(e)}")
             await send_line_notification(
                 "アップロード処理中にエラーが発生しました。", user_id
             )
-
-    if job_id:
-        # 結果を待つ
-        polling_url = f"https://happy-shot.yashikota.com/jobs/{job_id}"
-        for attempt in range(30):
-            async with aiohttp.ClientSession() as session:
-                async with session.get(polling_url) as resp:
-                    if resp.status == 200:
-                        result = await resp.json()
-                        status = result.get("status")
-                        logger.info(
-                            f"ジョブのステータス: {status} (試行回数 {attempt + 1})"
-                        )
-                        if status == "completed":
-                            await send_line_notification(
-                                f"アルバムの作成が完了しました！\nhttps://happy-shot.vercel.app/{job_id}",
-                                user_id,
-                            )
-                            break
-                        elif status == "failed":
-                            error_msg = result.get(
-                                "error", "処理中にエラーが発生しました"
-                            )
-                            logger.error(error_msg)
-                            await send_line_notification(
-                                "処理中にエラーが発生しました", user_id
-                            )
-                            break
-                    else:
-                        logger.error(f"ステータスの取得に失敗しました: {resp.status}")
-            await asyncio.sleep(2)

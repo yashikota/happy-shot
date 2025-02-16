@@ -4,3 +4,4 @@ run:
 check:
 	uvx ruff check
 	uvx ruff format
+	uvx isort .
