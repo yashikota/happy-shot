@@ -8,11 +8,15 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Request
 from linebot.v3 import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
-from linebot.v3.messaging import (ApiClient, Configuration, MessagingApi,
-                                  PushMessageRequest, ReplyMessageRequest,
-                                  TextMessage)
-from linebot.v3.webhooks import (MessageEvent, TextMessageContent,
-                                 VideoMessageContent)
+from linebot.v3.messaging import (
+    ApiClient,
+    Configuration,
+    MessagingApi,
+    PushMessageRequest,
+    ReplyMessageRequest,
+    TextMessage,
+)
+from linebot.v3.webhooks import MessageEvent, TextMessageContent, VideoMessageContent
 
 # ロガーの取得
 logger = logging.getLogger(__name__)

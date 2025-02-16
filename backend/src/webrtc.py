@@ -4,8 +4,12 @@ import time
 
 import cv2
 from aiortc import RTCIceServer  # type: ignore
-from aiortc import (RTCConfiguration, RTCPeerConnection, RTCRtpSender,
-                    RTCSessionDescription)
+from aiortc import (
+    RTCConfiguration,
+    RTCPeerConnection,
+    RTCRtpSender,
+    RTCSessionDescription,
+)
 from aiortc.contrib.media import MediaRelay  # type: ignore
 from fastapi import FastAPI, Request  # type: ignore
 from fastapi.middleware.cors import CORSMiddleware  # CORS対応
