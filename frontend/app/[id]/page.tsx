@@ -22,8 +22,13 @@ export default function GalleryPage() {
       fetch(`${baseUrl}/images?bucket=${id}`)
         .then((res) => res.json())
         .then((data) => {
-          setImages(data.images || []);
-          setLoading(false);
+          if (data.error === "Object name cannot be empty") {
+            setImages([]);
+            setLoading(false);
+          } else {
+            setImages(data.images || []);
+            setLoading(false);
+          }
         })
         .catch((error) => {
           console.error("Error fetching images:", error);
@@ -71,13 +76,8 @@ export default function GalleryPage() {
           />
         ) : (
           <div className="text-center text-gray-500 min-h-[50vh] flex flex-col items-center justify-center gap-4">
-            <p>画像が見つかりません</p>
-            <a
-              href="/"
-              className="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded"
-            >
-              ホームに戻る
-            </a>
+            <p>処理中です。しばらくお待ちください。</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
           </div>
         )}
       </main>

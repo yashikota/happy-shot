@@ -12,7 +12,8 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { AlertCircle, CheckCircle2, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 interface VideoPreview {
   file: File;
@@ -67,6 +68,13 @@ export default function Home() {
     });
   };
 
+  useEffect(() => {
+    if (processId) {
+      setNavigateId(processId);
+      setSuccess(true);
+    }
+  }, [processId]);
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!videoPreview) {
@@ -85,12 +93,7 @@ export default function Home() {
 
     try {
       const data = await uploadFileWithProgress(formData);
-      setProcessId(data.id);
-      setSuccess(true);
-
-      setTimeout(() => {
-        router.push(`/${data.id}`);
-      }, 1000);
+      setProcessId(data.process_id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "エラーが発生しました");
     } finally {
@@ -160,7 +163,7 @@ export default function Home() {
                   <div className="space-y-2">
                     <Progress value={uploadProgress} className="w-full" />
                     <p className="text-sm text-center text-muted-foreground">
-                      アップロード・処理中...
+                      アップロード処理中...
                     </p>
                   </div>
                 )}
@@ -176,14 +179,30 @@ export default function Home() {
                     <span>処理が完了しました</span>
                   </div>
                 )}
-                {!processId && (
-                  <Button type="submit" disabled={uploading || !videoPreview}>
-                    {uploading ? "処理中..." : "アップロード"}
-                  </Button>
-                )}
+                <Button
+                  type={processId ? "button" : "submit"}
+                  disabled={uploading || (!videoPreview && !processId)}
+                  onClick={() => {
+                    if (processId) {
+                      router.push(`/${processId}`);
+                    }
+                  }}
+                >
+                  {uploading ? "処理中..." : processId ? "アルバムへ" : "アップロード"}
+                </Button>
                 {processId && (
-                  <div className="mt-4 p-4 bg-gray-100 rounded-lg text-center text-lg font-semibold text-gray-700 shadow-md">
-                    ID: {processId}
+                  <div className="mt-4 p-4 bg-gray-100 rounded-lg text-center text-lg font-semibold text-gray-700 shadow-md space-x-4">
+                    <span>ID: {processId}</span>
+                    <Button
+                      type="button" // added to prevent re-upload
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(processId);
+                        toast("コピーしました");
+                      }}
+                    >
+                      コピー
+                    </Button>
                   </div>
                 )}
               </div>
