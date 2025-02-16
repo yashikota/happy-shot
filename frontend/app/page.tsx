@@ -22,12 +22,13 @@ interface VideoPreview {
 export default function Home() {
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [videoPreview, setVideoPreview] = useState<VideoPreview | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [navigateId, setNavigateId] = useState("");
   const [processId, setProcessId] = useState<string | null>(null);
+  const [navigateId, setNavigateId] = useState("");
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -41,6 +42,31 @@ export default function Home() {
     }
   };
 
+  const uploadFileWithProgress = (formData: FormData): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "https://happy-shot.yashikota.com/upload", true);
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const progress = Math.round((event.loaded / event.total) * 100);
+          setUploadProgress(progress);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(JSON.parse(xhr.responseText));
+        } else {
+          reject(new Error("アップロードに失敗しました"));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("ネットワークエラー"));
+      xhr.send(formData);
+    });
+  };
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!videoPreview) {
@@ -49,6 +75,7 @@ export default function Home() {
     }
 
     setUploading(true);
+    setUploadProgress(0);
     setError(null);
     setSuccess(false);
     setProcessId(null);
@@ -57,20 +84,10 @@ export default function Home() {
     formData.append("file", videoPreview.file);
 
     try {
-      const response = await fetch("https://happy-shot.yashikota.com/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error("アップロードに失敗しました");
-      }
-
-      const data = await response.json();
+      const data = await uploadFileWithProgress(formData);
       setProcessId(data.id);
       setSuccess(true);
 
-      // 処理完了後に結果ページへ遷移
       setTimeout(() => {
         router.push(`/${data.id}`);
       }, 1000);
@@ -141,7 +158,7 @@ export default function Home() {
                 )}
                 {uploading && (
                   <div className="space-y-2">
-                    <Progress value={undefined} className="w-full" />
+                    <Progress value={uploadProgress} className="w-full" />
                     <p className="text-sm text-center text-muted-foreground">
                       アップロード・処理中...
                     </p>
